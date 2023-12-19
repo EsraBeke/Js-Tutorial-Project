@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .dropdown-toggle::after {
+
+            display: none;
+        }
+
+        .task {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .task label.checked {
+            text-decoration: line-through;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .filters span.active {
+            color: #ba00df
+        }
+
+        .filters span {
+            margin-right: 5px;
+            font-size: 15px;
+            column-rule-color: gray;
+            cursor: pointer;
+        }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TODO APP</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        Todo App 2
+                        <div class="float-end">
+                            <input type="checkbox" id="select-all" class="form-check-input">
+                            <label for="select-all" style="align-content: start;" class="form-check-label ">Tümünü
+                                Seç</label>
+                        </div>
+                        <div class="card-body">
+                            <form>
+                                <div class="input-group">
+                                    <input type="text" id="txtTaskName" placeholder="Metin giriniz..."
+                                        class="form-control">
+                                    <button type="submit" class="btn btn-primary" id="btnAddNewTask">Ekle</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card mt-3">
+                        <div class="card-header controls">
+                            <div class="filters">
+                                <span class="active" id="all">Tümü</span>
+                                <span id="pending">Yapılacaklar</span>
+                                <span id="completed">Tamamlananlar</span>
+                            </div>
+                            <button id="btnClear" class="btn btn-danger btn-sm float-end">Tamamlananları Sil</button>
+                        </div>
+                        <ul id="task-list" class="list-group list-group-flush">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        "use strict";
+        let sonuc;
+        var ul = document.getElementById("task-list");
+
+        let gorevListesi = [];
+        if(localStorage.getItem("gorevListesi") !== null){
+            gorevListesi = JSON.parse(localStorage.getItem("gorevListesi"));
+        }
+        let editId;
+        let isEditTask = false;
+
+        let selectedTasks = [];
+        const taskInput = document.querySelector("#txtTaskName");
+        const btnClear = document.querySelector("#btnClear");
+        const filters = document.querySelectorAll(".filters span");
+
+        function displayTasks(filter) {
+            let ul = document.getElementById("task-list");
+            ul.innerHTML = "";
+            if (gorevListesi.length == 0) {
+                ul.innerHTML = "<p class='p-3 m-0'>Henüz Görev Bulunmuyor.</p>"
+            } else {
+                for (const gorev of gorevListesi) {
+                    let completed = gorev.durum == "completed" ? "checked" : "";
+                    if (filter == gorev.durum || filter == "all") {
+
+                        let li = `
+        <li class="task list-group-item">
+                <div class="form-check">
+                    <input type="checkbox" id="${gorev.id}" class="form-check-input" ${completed}>
+                    <label for="${gorev.id}" class="form-check-label ${completed}" >${gorev.gorevAdi}</label>
+            </div>
+            <div class="dropdown">
+            <button class="btn btn-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a onclick="deleteTask(${gorev.id})" class="dropdown-item" href="#"><i class="fa-regular fa-trash-can"></i> Sil</a></li>
+                <li><a onclick='editTask(${gorev.id},"${gorev.gorevAdi}")' class="dropdown-item" href="#"><i class="fa-sharp fa-solid fa-pen"></i> Düzenle</a></li>
+            </ul>
+            </div>
+    </li>
+        `;
+                     ul.insertAdjacentHTML("beforeend", li)
+                    
+                    
+                    }
+                   
+                }
+                for (let i = 0; i < ul.children.length; i++) {
+                    ul.children[i].children[0].children[0].addEventListener("change", function () {
+                        selectTask(ul.children[i].children[0].children[0].id);
+                    });
+                }
+
+            }
+        }
+        displayTasks(document.querySelector("span.active").id);
+
+        // Tümünü Seç check kısmı
+        document.getElementById("select-all").addEventListener("change", selectAllTasks);
+        let selectAll = document.getElementById("select-all");
+        function selectAllTasks(event) {
+            sonuc = selectAll.checked;
+            if (sonuc == true) {
+
+                console.log(ul.children[0].children[0].children[0].checked);
+                for (let i = 0; i < gorevListesi.length; i++) {
+                    // console.log(gorevListesi[i].id);
+                    let hedefTask = document.getElementById(gorevListesi[i].id);
+                    hedefTask.checked = true;
+                    selectTask(gorevListesi[i].id);
+                }
+            } else if (sonuc == false) {
+                for (let i = 0; i < ul.children.length; i++) {
+                    let hedefTask = document.getElementById(gorevListesi[i].id);
+                    hedefTask.checked = false;
+                    selectTask(gorevListesi[i].id);
+                }
+            }
+            event.preventDefault();
+        }
+
+
+
+
+        function selectTask(id) {
+            let hedefTask = document.getElementById(id);
+            let hedefTaskArr = gorevListesi[gorevListesi.findIndex(gorev => gorev.id == id)].durum;
+            let secim = hedefTask.checked;
+
+            if (secim == true) {
+                gorevListesi[gorevListesi.findIndex(gorev => gorev.id == id)].durum = "completed";
+                selectedTasks.push(id);
+            }
+            else if (secim == false) {
+                if (document.getElementById("select-all").checked == true) document.getElementById("select-all").checked = false;
+                gorevListesi[gorevListesi.findIndex(gorev => gorev.id == id)].durum = "pending";
+                selectedTasks.splice(selectedTasks.indexOf(id), 1);
+            }
+           
+
+            console.log(selectedTasks);
+            displayTasks(document.querySelector("span.active").id);
+            localStorage.setItem("gorevListesi",JSON.stringify(gorevListesi));
+           // console.log(gorevListesi);
+            
+        }
+        //************************
+
+
+        document.querySelector("#btnAddNewTask").addEventListener("click", addTask);
+        document.querySelector("#btnAddNewTask").addEventListener("keypress", function () {
+            if (event.key == "Enter") {
+                document.getElementById("btnAddNewTask").click();
+            }
+        });
+
+
+        for (const span of filters) {
+            span.addEventListener("click", function () {
+                document.querySelector("span.active").classList.remove("active");
+                span.classList.add("active");
+                displayTasks(span.id);
+            })
+
+        }
+
+let count=gorevListesi[0]!=null ? gorevListesi[gorevListesi.length-1].id :0;
+        function addTask(event) {
+            if (taskInput.value) {
+                if (!isEditTask) {
+                    
+                    gorevListesi.push({ "id":count+=1, "gorevAdi": taskInput.value, "durum": "pending" });
+                    taskInput.value = null;
+                } else {
+                    for (const gorev of gorevListesi) {
+                        if (gorev.id == editId) {
+                            gorev.gorevAdi = taskInput.value;
+                        }
+                        isEditTask = false;
+                    }
+                }
+            }     
+            event.preventDefault();
+            displayTasks(document.querySelector("span.active").id);
+            localStorage.setItem("gorevListesi",JSON.stringify(gorevListesi));
+        }
+
+        function deleteTask(id) {
+            let deletedId;
+            // for (const key in object) {
+            //     if (gorevListesi[key].id==id) {
+            //         deletedId=key;
+            //     }
+            // }
+            // deletedId=gorevListesi.findIndex(function(gorev){
+            //   return gorev.id==id
+            // })
+            deletedId = gorevListesi.findIndex(gorev => gorev.id == id); // arrow function Javadaki gibi :)
+            gorevListesi.splice(deletedId, 1);
+           
+            displayTasks(document.querySelector("span.active").id);
+            localStorage.setItem("gorevListesi",JSON.stringify(gorevListesi));
+        }
+        function editTask(taskId, taskText) {
+            editId = taskId;
+            isEditTask = true;
+            taskInput.value = taskText;
+            taskInput.focus();
+            taskInput.classList.add("active");
+        }
+
+        btnClear.addEventListener("click", function () {
+            
+            for (const gorevID of selectedTasks) {
+
+                deleteTask(gorevID);
+                
+            }
+            selectedTasks=[];
+            console.log(selectedTasks);
+            displayTasks(document.querySelector("span.active").id);
+        });
+
+    </script>
+</body>
+
+</html>
